@@ -8,6 +8,8 @@ echo "===================================================="
 
 # Define the order of tweak scripts
 tweaks=(
+  "./tweaks/boot-lock.sh"
+  "./tweaks/lock-restyled.sh"
   "./tweaks/omarchy-keybindings.sh"
   "./tweaks/plymouth-bgrt.sh"
 )

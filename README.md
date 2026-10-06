@@ -2,6 +2,23 @@
 
 Customization of a fresh Omarchy setup, based on https://github.com/itsmzdev/omarchy-env-setup
 
+## References
+
+This repository incorporates configurations and modules from the following sources:
+
+### Core Setup
+- [itsmzdev/omarchy-env-setup](https://github.com/itsmzdev/omarchy-env-setup) - Base Omarchy environment setup
+
+### Themes & Tweaks
+- [thehumanx/omarchy-setup](https://github.com/thehumanx/omarchy-setup) - Additional Omarchy configurations (boot lock screen, restyled lock screen, etc.)
+- [xpusostomos/wezterm-omarchy](https://github.com/xpusostomos/wezterm-omarchy) - WezTerm integration with Omarchy color schemes (live theme switching)
+
+### Applications
+- [bitwarden/clients](https://github.com/bitwarden/clients) - Bitwarden password manager
+- [MistralAI/mistral-cli](https://github.com/MistralAI/mistral-cli) - Mistral CLI
+- [ProtonMail/proton-pass](https://github.com/ProtonMail/proton-pass) - Proton Authenticator
+- [wez/wezterm](https://github.com/wez/wezterm) - WezTerm terminal emulator
+
 ## Quick Install
 
 ```bash

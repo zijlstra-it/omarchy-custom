@@ -96,13 +96,14 @@ Define arrays with one element per line for readability. **Sort entries alphabet
 
 ```bash
 installers=(
+  "./apps/install-bitwarden.sh"
   "./apps/install-firefox.sh"
   "./apps/install-ghostty.sh"
   "./apps/install-mistral-cli.sh"
   "./apps/install-nvim.sh"
+  "./apps/install-proton-authenticator.sh"
   "./apps/install-stow.sh"
   "./apps/install-wezterm.sh"
-
 )
 ```
 
@@ -110,6 +111,8 @@ For tweaks, use a separate `install-tweaks.sh` script:
 
 ```bash
 tweaks=(
+  "./tweaks/boot-lock.sh"
+  "./tweaks/lock-restyled.sh"
   "./tweaks/omarchy-keybindings.sh"
   "./tweaks/plymouth-bgrt.sh"
 )
@@ -357,10 +360,12 @@ The `installers` array controls the installation order. Active installers are un
 
 ```bash
 installers=(
+  "./apps/install-bitwarden.sh"
   "./apps/install-firefox.sh"
   "./apps/install-ghostty.sh"
   "./apps/install-mistral-cli.sh"
   "./apps/install-nvim.sh"
+  "./apps/install-proton-authenticator.sh"
   "./apps/install-stow.sh"
   "./apps/install-wezterm.sh"
 )
@@ -372,6 +377,8 @@ The `tweaks` array controls the tweak execution order. Maintain alphabetical ord
 
 ```bash
 tweaks=(
+  "./tweaks/boot-lock.sh"
+  "./tweaks/lock-restyled.sh"
   "./tweaks/omarchy-keybindings.sh"
   "./tweaks/plymouth-bgrt.sh"
 )
@@ -404,6 +411,8 @@ omarchy pkg drop \
 
 The `tweaks/` directory contains system customization scripts that configure system-level settings. Tweak scripts use the naming convention `<tweak-name>.sh` (without the `install-` prefix).
 
+- **`boot-lock.sh`**: Creates Hyprland bootlock.lua that shows lock screen immediately at boot (works with SDDM autologin and Hyprland's pcall loader)
+- **`lock-restyled.sh`**: Creates custom.lock plugin for restyled lock screen (centered clock/date/battery, hidden password field, rounded design)
 - **`omarchy-keybindings.sh`**: Configures custom keybindings using `omarchy keybindings` commands
 - **`plymouth-bgrt.sh`**: Sets the Plymouth boot splash theme to `bgrt` and disables `omarchy-refresh-plymouth.service`
 
@@ -479,6 +488,10 @@ Before committing changes:
 2. Test the full execution flow with `bash ./setup.sh`
 3. Verify error handling by testing with missing dependencies
 4. Ensure all scripts have execute permissions
+
+## Reference Attribution
+
+**Always add a reference to the README when incorporating configurations, modules, or integrations from other Git repositories.** When adding new apps, tweaks, or improvements that are based on or inspired by external repositories, update the References section in README.md with the appropriate source link under the relevant category (Core Setup, Themes & Tweaks, or Applications). This ensures proper attribution and helps users understand the provenance of the configurations.
 
 ## Commit Message Format
 
