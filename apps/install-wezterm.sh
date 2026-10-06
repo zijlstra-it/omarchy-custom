@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
 echo "===================================================="
-echo "           Omarchy: Installing VSCode               "
+echo "           Omarchy: Installing WezTerm               "
 echo "===================================================="
 
-omarchy install editor vscode
+omarchy install terminal wezterm
 
-# echo "Making VSCode as a Default Editor"
-# omarchy default editor code
+# Set WezTerm as the Default Terminal
+# omarchy default terminal wezterm
 
 echo "===================================================="
-echo "         ✅ VSCode installed successfully!          "
+echo "          ✅ WezTerm installed successfully!        "
 echo "===================================================="

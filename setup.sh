@@ -3,11 +3,11 @@
 set -euo pipefail
 
 # Configuration
-REPOS_DIR="$HOME/repos"
-OMARCHY_REPO_SSH="git@github.com:itsmzdev/omarchy-env-setup.git"
-OMARCHY_REPO_HTTPS="https://github.com/itsmzdev/omarchy-env-setup.git"
-DOTFILES_REPO_SSH="git@github.com:itsmzdev/dotfiles.git"
-DOTFILES_REPO_HTTPS="https://github.com/itsmzdev/dotfiles.git"
+REPOS_DIR="$HOME/git/github"
+OMARCHY_REPO_SSH="git@github.com:zijlstra-it/omarchy-custom.git"
+OMARCHY_REPO_HTTPS="https://github.com/zijlstra-it/omarchy-custom.git"
+DOTFILES_REPO_SSH="git@github.com:zijlstra-it/dotfiles.git"
+DOTFILES_REPO_HTTPS="https://github.com/zijlstra-it/dotfiles.git"
 
 clone_repo() {
   local repo_name="$1"
@@ -49,12 +49,12 @@ echo "===================================================="
 echo -e "\n📦 Checking structural environment..."
 mkdir -p "$REPOS_DIR"
 
-# Check & Clone omarchy-env-setup
-if [ ! -d "$REPOS_DIR/omarchy-env-setup" ]; then
-  clone_repo "omarchy-env-setup" "$OMARCHY_REPO_SSH" "$OMARCHY_REPO_HTTPS" \
-    "$REPOS_DIR/omarchy-env-setup"
+# Check & Clone omarchy-custom
+if [ ! -d "$REPOS_DIR/omarchy-custom" ]; then
+  clone_repo "omarchy-custom" "$OMARCHY_REPO_SSH" "$OMARCHY_REPO_HTTPS" \
+    "$REPOS_DIR/omarchy-custom"
 else
-  echo "✅ omarchy-env-setup directory detected."
+  echo "✅ omarchy-custom directory detected."
 fi
 
 # Check & Clone dotfiles
@@ -65,9 +65,8 @@ else
   echo "✅ dotfiles directory detected."
 fi
 
-# Move into the omarchy-env-setup folder where the sub-scripts live
-cd "$REPOS_DIR/omarchy-env-setup"
-
+# Move into the omarchy-custom folder where the sub-scripts live
+cd "$REPOS_DIR/omarchy-custom"
 
 # --------------------------------------------------
 # Phase 2: Sequential Execution
@@ -80,6 +79,13 @@ if [ -f "./install-apps.sh" ]; then
   echo "🛠️ Step 1: Running core installation suite..."
   chmod +x ./install-apps.sh
   ./install-apps.sh
+fi
+
+# 1.5. Install system tweaks
+if [ -f "./install-tweaks.sh" ]; then
+  echo "🔧 Step 1.5: Applying system tweaks..."
+  chmod +x ./install-tweaks.sh
+  ./install-tweaks.sh
 fi
 
 # 2. Remove unwanted apps/bloat

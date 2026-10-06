@@ -1,17 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
 echo "===================================================="
-echo "     Omarchy: Installing Brave Origin Browser       "
+echo "       Omarchy: Installing Ghostty Terminal         "
 echo "===================================================="
 
 omarchy install terminal ghostty
 
-echo "Making Brave as a Default Browser"
+# Set Ghostty as the Default Terminal
 omarchy default terminal ghostty
 
 echo "===================================================="
-echo "        ✅ Browser installed successfully!          "
+echo "        ✅ Ghostty installed successfully!         "
 echo "===================================================="
-

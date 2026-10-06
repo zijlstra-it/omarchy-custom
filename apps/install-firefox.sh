@@ -1,13 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
 echo "===================================================="
-echo "     Omarchy: Installing  Qpwgraph (PipeWire)       "
+echo "       Omarchy: Installing Firefox Browser          "
 echo "===================================================="
 
-omarchy pkg add qpwgraph
+omarchy install browser firefox
+
+echo "Making Firefox as a Default Browser"
+omarchy default browser firefox
 
 echo "===================================================="
-echo "        ✅ Qpwgraph installed successfully!         "
+echo "        ✅ Firefox installed successfully!         "
 echo "===================================================="

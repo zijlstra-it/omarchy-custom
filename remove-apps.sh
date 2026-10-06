@@ -17,11 +17,16 @@ webapps=(
   "Discord"
   "Figma"
   "Fizzy"
+  "GitHub"
   "Google Contacts"
   "Google Maps"
   "Google Messages"
+  "Google Photos"
   "HEY"
+  "MoonLight"
+  "X"
   "YouTube"
+  "Zoom"
 )
 
 for app in "${webapps[@]}"; do
@@ -29,8 +34,7 @@ for app in "${webapps[@]}"; do
   omarchy webapp remove "$app"
 done
 
-# Skipped webapps: GitHub, Google Photos, WhatsApp, Zoom
-
+# Skipped webapps: WhatsApp
 
 # --------------------------------------------------
 # 2. Removing Packages
@@ -38,24 +42,24 @@ done
 echo -e "\nExecuting: Removing Packages..."
 
 omarchy pkg drop \
-  typora \
-  spotify \
-  foot \
-  libreoffice-fresh \
   1password-beta \
   1password-cli \
-  signal-desktop \
-  pinta \
-  obsidian \
-  obs-studio \
+  aether \
+  chromium \
   kdenlive \
-  chromium
+  obs-studio \
+  obsidian \
+  omawrite \
+  pinta \
+  signal-desktop \
+  tensaku \
+  typora \
+  xournalpp
 
-# Skipped packages: xournalpp, lazydocker, opencode, claude-code
+# Skipped packages: lazydocker, opencode, claude-code
 
 omarchy remove security fido2
 omarchy remove security fingerprint
-
 
 # --------------------------------------------------
 # Completion

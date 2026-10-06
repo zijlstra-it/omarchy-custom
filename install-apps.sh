@@ -8,19 +8,11 @@ echo "===================================================="
 
 # Define the exact order of installation scripts
 installers=(
-  "./apps/install-brave-origin.sh"
-  "./apps/install-ghostty.sh"
-  "./apps/install-vscode.sh"
-  "./apps/install-zed.sh"
-  "./apps/install-node.sh"
-  "./apps/install-codex.sh"
-  "./apps/install-mongodb.sh"
-  "./apps/install-mysql.sh"
+  "./apps/install-firefox.sh"
+  "./apps/install-mistral-cli.sh"
+  "./apps/install-nvim.sh"
   "./apps/install-stow.sh"
-  # "./apps/install-qbittorrent.sh"
-  # "./apps/install-qpwgraph.sh"
-  # "./apps/install-steam.sh"
-  # "./apps/install-proton-env.sh"
+  "./apps/install-wezterm.sh"
 )
 
 echo -e "\nRunning individual application modules..."

@@ -3,13 +3,15 @@
 set -euo pipefail
 
 echo "===================================================="
-echo "       Omarchy: Deploying MongoDB Container         "
+echo "       Omarchy: Installing Mistral CLI              "
 echo "===================================================="
 
-# Run the native Omarchy command
-echo "📥 Installing docker database..."
-omarchy install docker dbs MongoDB
+# Install Mistral CLI
+omarchy pkg add mistral-cli
+
+# Set Mistral CLI as the default agent
+omarchy default agent mistral-cli
 
 echo "===================================================="
-echo "         ✅ MongoDB deployed successfully!          "
+echo "       ✅ Mistral CLI installed successfully!       "
 echo "===================================================="
