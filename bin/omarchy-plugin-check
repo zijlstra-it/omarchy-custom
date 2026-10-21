@@ -1,0 +1,282 @@
+#!/usr/bin/env bash
+# omarchy-plugin-check — vet an Omarchy plugin, then offer to fork it to your
+# own GitHub account.
+#
+# Workflow:
+#   1. Input: a GitHub URL to an Omarchy plugin.
+#   2. Ensures all required tools are installed (installs missing ones).
+#   3. Runs `omarchy-plugin-vet` (the security audit tool by Dave Knows Tech).
+#   4. Shows the report, then offers the option to fork the repo to your own
+#      GitHub account (and optionally clone it locally).
+#
+# Requirements: handled automatically by ensure_tools().
+#
+# Exit codes: 0 = done, 1 = error/aborted, 2 = tool installation failed.
+set -o pipefail
+
+VET_URL="https://raw.githubusercontent.com/mightywomble/omarchy_setup/refs/heads/main/files/.local/bin/omarchy-plugin-vet"
+VET_DEST="$HOME/.local/bin/omarchy-plugin-vet"
+
+# ---------------------------------------------------------------------------
+# Output helpers
+# ---------------------------------------------------------------------------
+if [[ -t 1 ]]; then
+  C_G=$'\033[32m'; C_Y=$'\033[33m'; C_R=$'\033[31m'; C_B=$'\033[36m'; C_0=$'\033[0m'
+else
+  C_G=""; C_Y=""; C_R=""; C_B=""; C_0=""
+fi
+ok()    { printf '%s[OK]%s %s\n'    "$C_G" "$C_0" "$1"; }
+warn()  { printf '%s[WARN]%s %s\n'  "$C_Y" "$C_0" "$1"; }
+err()   { printf '%s[ERROR]%s %s\n' "$C_R" "$C_0" "$1" >&2; }
+hdr()   { printf '\n%s=== %s ===%s\n' "$C_B" "$1" "$C_0"; }
+
+# Ask a yes/no question with a default. Usage: ask_yn "Question?" [y|n]
+ask_yn() {
+  local question="$1" default="${2:-y}" prompt reply
+  if [[ "$default" == "y" ]]; then prompt="[Y/n]"
+  else prompt="[y/N]"; fi
+  printf '%s %s ' "$question" "$prompt"
+  read -r reply
+  reply="${reply:-$default}"
+  reply="${reply,,}"
+  [[ "$reply" == "y" || "$reply" == "yes" ]]
+}
+
+# ---------------------------------------------------------------------------
+# Tool installation helpers
+# ---------------------------------------------------------------------------
+have() { command -v "$1" >/dev/null 2>&1; }
+
+is_arch() { have pacman; }
+
+pkg_install() {
+  local pkgs=("$@")
+  if is_arch; then
+    sudo pacman -S --needed --noconfirm "${pkgs[@]}"
+  elif have apt; then
+    sudo apt-get install -y "${pkgs[@]}"
+  else
+    err "Unsupported distro: install [${pkgs[*]}] manually, then re-run."
+    return 1
+  fi
+}
+
+# Ensure the omarchy-plugin-vet script exists in ~/.local/bin (downloaded from
+# the author's dotfiles repo; not packaged in any distro).
+install_vet() {
+  mkdir -p "$HOME/.local/bin"
+  if ! curl -fsSL "$VET_URL" -o "$VET_DEST"; then
+    err "Could not download omarchy-plugin-vet from:"
+    err "  $VET_URL"
+    err "Fetch it manually from the author's blog post:"
+    err "  https://www.daveknowstech.com/2026/09/03/vetting-omarchy-plugins-before-they-run-on-your-machine/"
+    return 1
+  fi
+  chmod +x "$VET_DEST"
+  ok "omarchy-plugin-vet installed to $VET_DEST"
+}
+
+# Ensure the GitHub CLI is installed AND authenticated.
+ensure_gh_auth() {
+  if ! have gh; then
+    warn "GitHub CLI (gh) not found — installing..."
+    pkg_install github-cli || return 1
+  fi
+  if ! gh auth status >/dev/null 2>&1; then
+    warn "gh is not authenticated. Starting login flow..."
+    gh auth login || { err "gh authentication failed."; return 1; }
+  fi
+}
+
+# Check all required tools; offer to install the missing ones.
+ensure_tools() {
+  hdr "Checking required tools"
+  local missing=()
+  for tool in git gh jq omarchy-plugin-vet; do
+    if have "$tool"; then
+      ok "$tool found"
+    else
+      warn "$tool missing from PATH"
+      missing+=("$tool")
+    fi
+  done
+
+  if (( ${#missing[@]} == 0 )); then
+    return 0
+  fi
+
+  if ! ask_yn "Install the missing tool(s): ${missing[*]}?" "y"; then
+    err "Cannot continue without required tools. Aborting."
+    return 1
+  fi
+
+  local tool
+  for tool in "${missing[@]}"; do
+    case "$tool" in
+      git)  pkg_install git ;;
+      jq)   pkg_install jq ;;
+      gh)   pkg_install github-cli ;;
+      omarchy-plugin-vet) install_vet ;;
+    esac || { err "Installation of $tool failed."; return 2; }
+  done
+
+  # Re-verify
+  local still_missing=()
+  for tool in "${missing[@]}"; do
+    have "$tool" || still_missing+=("$tool")
+  done
+  if (( ${#still_missing[@]} > 0 )); then
+    err "Still missing after install: ${still_missing[*]}"
+    err "If ~/.local/bin is not on PATH, add it:  export PATH=\"$HOME/.local/bin:\$PATH\""
+    return 2
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Core logic
+# ---------------------------------------------------------------------------
+# Normalize any GitHub URL form (https, git@, .git suffix, trailing slash)
+# to a bare "owner/repo" string.
+normalize_owner_repo() {
+  local input="$1" path
+  path="$(printf '%s' "$input" | sed -E '
+    s#^[a-zA-Z]+://github\.com/##;
+    s#^git@github\.com:##;
+    s#\.git$##;
+    s#^/##;
+    s#/$##')"
+  printf '%s' "$path" | cut -d/ -f1-2
+}
+
+# Verify the GitHub repo actually exists and is accessible, before running
+# the audit (otherwise omarchy-plugin-vet would fail on clone).
+repo_exists() {
+  local owner_repo="$1"
+  gh api "repos/$owner_repo" >/dev/null 2>&1
+}
+
+validate_input() {
+  local owner_repo="$1"
+  if [[ ! "$owner_repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    err "No valid GitHub repo recognized from: $1"
+    exit 1
+  fi
+  if ! repo_exists "$owner_repo"; then
+    err "Repo not found (or not accessible): $owner_repo"
+    err "Check the URL and your access with:  gh repo view $owner_repo"
+    exit 1
+  fi
+  ok "Repo exists and is accessible: $owner_repo"
+}
+
+run_audit() {
+  local git_url="$1" rc
+  hdr "Security audit: omarchy-plugin-vet"
+  echo "Plugin: $git_url"
+  echo
+  omarchy-plugin-vet "$git_url"
+  rc=$?
+  echo
+  hdr "Audit result"
+  case $rc in
+    0)  ok "No high-risk findings. Still read the report above yourself." ;;
+    2)  warn "High-risk finding(s) detected. Consider NOT forking until you have read the code yourself." ;;
+    *)  err "omarchy-plugin-vet exited with code $rc (unexpected)." ;;
+  esac
+  return "$rc"
+}
+
+# Fork the repo. Stores the fork owner in the global FORK_USER instead of
+# printing it, so the function's status output never pollutes a captured
+# return value.
+FORK_USER=""
+fork_repo() {
+  local owner_repo="$1"
+  hdr "Forking to your own account"
+  if ! gh repo fork "$owner_repo" --clone=false 2>&1 | sed 's/^/  /'; then
+    err "Fork failed. Check: gh auth status"
+    return 1
+  fi
+  FORK_USER="$(gh api user --jq .login 2>/dev/null)"
+  if [[ -z "$FORK_USER" ]]; then
+    err "Could not determine your GitHub username (gh api user failed)."
+    return 1
+  fi
+  ok "Forked to ${FORK_USER}/$(printf '%s' "$owner_repo" | cut -d/ -f2)"
+}
+
+clone_fork() {
+  local gh_user="$1" repo_name="$2" target
+  read -r -p "Target directory [$repo_name]: " target
+  target="${target:-$repo_name}"
+  if git clone "https://github.com/${gh_user}/${repo_name}.git" "$target" 2>&1 | sed 's/^/  /'; then
+    ok "Cloned locally into ./$target"
+  else
+    warn "Local clone failed — the fork exists on GitHub though."
+  fi
+}
+
+print_install_hint() {
+  local git_url="$1"
+  echo
+  ok "Done. Optionally install the plugin with:"
+  echo "  omarchy plugin add $git_url --enable"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,14p' "$0"; exit 0
+  fi
+  if [[ $# -ne 1 ]]; then
+    echo "Usage: omarchy-plugin-check <github-url-to-plugin>" >&2
+    exit 1
+  fi
+
+  local URL="$1"
+  ensure_tools || exit $?
+  ensure_gh_auth || exit $?
+
+  local owner_repo
+  owner_repo="$(normalize_owner_repo "$URL")"
+  validate_input "$owner_repo"
+  local GIT_URL="https://github.com/${owner_repo}.git"
+
+  run_audit "$GIT_URL"
+  local vet_rc=$?
+
+  echo
+  local do_fork=0
+  if (( vet_rc == 2 )); then
+    ask_yn "Fork to your own account anyway despite the findings?" "n" && do_fork=1
+  else
+    ask_yn "Fork ${owner_repo} to your own GitHub account?" "y" && do_fork=1
+  fi
+
+  local install_url="$GIT_URL"   # default: upstream repo
+
+  if (( do_fork )); then
+    if ! fork_repo "$owner_repo"; then
+      exit 1
+    fi
+    local gh_user="$FORK_USER"
+    local repo_name; repo_name="$(printf '%s' "$owner_repo" | cut -d/ -f2)"
+    install_url="https://github.com/${gh_user}/${repo_name}.git"
+
+    echo
+    if ask_yn "Clone the fork locally now?" "n"; then
+      clone_fork "$gh_user" "$repo_name"
+    else
+      ok "No local clone created."
+    fi
+  else
+    ok "Not forked."
+  fi
+
+  # After forking, the install hint points to YOUR fork; otherwise upstream.
+  print_install_hint "$install_url"
+}
+
+main "$@"
