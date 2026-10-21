@@ -10,14 +10,13 @@ This repository incorporates configurations and modules from the following sourc
 - [itsmzdev/omarchy-env-setup](https://github.com/itsmzdev/omarchy-env-setup) - Base Omarchy environment setup
 
 ### Themes & Tweaks
-- [thehumanx/omarchy-setup](https://github.com/thehumanx/omarchy-setup) - Additional Omarchy configurations (boot lock screen, restyled lock screen, etc.)
-- [xpusostomos/wezterm-omarchy](https://github.com/xpusostomos/wezterm-omarchy) - WezTerm integration with Omarchy color schemes (live theme switching)
+- plugins
+- themes
 
 ### Applications
 - [bitwarden/clients](https://github.com/bitwarden/clients) - Bitwarden password manager
 - [MistralAI/mistral-cli](https://github.com/MistralAI/mistral-cli) - Mistral CLI
 - [ProtonMail/proton-pass](https://github.com/ProtonMail/proton-pass) - Proton Authenticator
-- [wez/wezterm](https://github.com/wez/wezterm) - WezTerm terminal emulator
 
 ## Quick Install
 
@@ -35,4 +34,3 @@ The clone logic tries SSH first and falls back to HTTPS. SSH requires a working 
 - `install-tweaks.sh` — ordered elections of tweaks to apply.
 - `tweaks/` — individual `<tweak>.sh` scripts.
 - `remove-apps.sh` — web app, package, and system component removal selections.
-- Dotfiles and Stow packages are maintained in a separate `dotfiles` repository.
