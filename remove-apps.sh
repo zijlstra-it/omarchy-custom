@@ -25,7 +25,6 @@ webapps=(
   "HEY"
   "MoonLight"
   "X"
-  "YouTube"
   "Zoom"
 )
 

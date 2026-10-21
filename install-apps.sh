@@ -10,12 +10,8 @@ echo "===================================================="
 installers=(
   "./apps/install-bitwarden.sh"
   "./apps/install-firefox.sh"
-  "./apps/install-ghostty.sh"
   "./apps/install-mistral-cli.sh"
-  "./apps/install-nvim.sh"
   "./apps/install-proton-authenticator.sh"
-  "./apps/install-stow.sh"
-  "./apps/install-wezterm.sh"
 )
 
 echo -e "\nRunning individual application modules..."
