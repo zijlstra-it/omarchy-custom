@@ -23,24 +23,31 @@ add_plugin() {
                     or (.name | ascii_downcase | gsub("[^a-z0-9]"; "")) == $n)] | length > 0' \
         >/dev/null 2>&1; then
       info "Plugin '$slug' already installed, skipping add."
-      return 0
+      return 1
     fi
   elif omarchy plugin list 2>/dev/null | grep -qi "$slug"; then
     info "Plugin '$slug' already installed, skipping add."
-    return 0
+    return 1
   fi
   step "Adding plugin: $slug"
   omarchy plugin add "$url" --yes
+  return 0
 }
 
-add_plugin https://github.com/kris-1/omarchy-monitor-layout.git monitor-layout
-omarchy plugin enable monitor-layout --section right
-add_plugin https://github.com/ParvvOK/equalizer.git equalizer
-omarchy plugin enable equalizer --section right
-add_plugin https://github.com/BibekBhusal0/omarchy-better-lock.git better-lock
-add_plugin https://github.com/PixDevsApps/omarchy-hertz-radio.git hertz-radio
-omarchy plugin enable hertz-radio --section right
-add_plugin https://github.com/zijlstra-it/omarchy-spotify-player.git omarchy-spotify-player
-omarchy plugin enable omarchy-spotify-player --right
+# Enable a plugin only when it was newly added in this run (add_plugin
+# returns 0); already-installed plugins keep their existing state.
+if add_plugin https://github.com/kris-1/omarchy-monitor-layout.git monitor-layout; then
+  omarchy plugin enable monitor-layout --section right
+fi
+if add_plugin https://github.com/ParvvOK/equalizer.git equalizer; then
+  omarchy plugin enable equalizer --section right
+fi
+add_plugin https://github.com/BibekBhusal0/omarchy-better-lock.git better-lock || true
+if add_plugin https://github.com/PixDevsApps/omarchy-hertz-radio.git hertz-radio; then
+  omarchy plugin enable io.github.pixdevsapps.hertz-radio --section right
+fi
+if add_plugin https://github.com/zijlstra-it/omarchy-spotify-player.git omarchy-spotify-player; then
+  omarchy plugin enable omarchy-spotify-player --right
+fi
 
 ok "Plugins installed successfully!"
