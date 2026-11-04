@@ -2,37 +2,32 @@
 
 set -euo pipefail
 
-echo "===================================================="
-echo "       Omarchy: Installing Tweaks...                  "
-echo "===================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/lib/output.sh"
+
+banner "Omarchy: Installing Tweaks..."
 
 # Define the order of tweak scripts
 tweaks=(
   "./tweaks/00_plugins.sh"
   "./tweaks/01_themes.sh"
-  "./tweaks/boot-lock.sh"
-  "./tweaks/lock-restyled.sh"
-  "./tweaks/omarchy-keybindings.sh"
   "./tweaks/plymouth-bgrt.sh"
 )
 
-echo -e "\nRunning tweak scripts..."
-echo "------------------------------------------------"
+section "Running tweak scripts..."
 
 # Validate every tweak before making changes
 for script in "${tweaks[@]}"; do
   if [[ ! -f "$script" ]]; then
-    echo "❌ Error: Required tweak not found: $script" >&2
-    exit 1
+    err "Error: Required tweak not found: $script"
   fi
 done
 
 # Execute each tweak in an isolated Bash process
 for script in "${tweaks[@]}"; do
-  echo "Executing: $(basename "$script")"
+  step "Executing: $(basename "$script")"
   bash "$script"
 done
 
-echo "===================================================="
-echo "       🎉 All tweaks installed successfully!         "
-echo "===================================================="
+ok "🎉 All tweaks installed successfully!"

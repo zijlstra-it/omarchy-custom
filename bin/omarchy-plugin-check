@@ -61,6 +61,57 @@ pkg_install() {
   fi
 }
 
+# Install qmllint. On Arch (qt6-declarative) and Debian/Ubuntu
+# (qt6-declarative-dev-tools) the binary is NOT placed on PATH but in a
+# libdir like /usr/lib/qt6/bin — so after installing we locate it and
+# symlink it into ~/.local/bin.
+install_qmllint() {
+  if is_arch; then
+    pkg_install qt6-declarative || return 1
+  elif have apt; then
+    pkg_install qt6-declarative-dev-tools || return 1
+  else
+    err "Unsupported distro: install qmllint (Qt 6 declarative tools) manually."
+    return 1
+  fi
+
+  if have qmllint; then
+    ok "qmllint is now on PATH"
+    return 0
+  fi
+
+  local candidate
+  for candidate in /usr/lib/qt6/bin/qmllint /usr/lib/qt5/bin/qmllint /usr/bin/qmllint; do
+    if [[ -x "$candidate" ]]; then
+      mkdir -p "$HOME/.local/bin"
+      ln -sf "$candidate" "$HOME/.local/bin/qmllint"
+      ok "qmllint symlinked from $candidate into ~/.local/bin"
+      return 0
+    fi
+  done
+
+  err "qmllint installed but binary not found in the usual locations."
+  err "Locate it with:  find /usr -name qmllint -type f 2>/dev/null"
+  return 1
+}
+
+# Install osv-scanner. Packaged in Arch's official "extra" repo; on
+# Debian/Ubuntu fall back to `go install` (which is why `go` matters).
+install_osv_scanner() {
+  if is_arch; then
+    pkg_install osv-scanner && return 0
+  fi
+  if ! have go; then
+    warn "osv-scanner is not packaged here and needs Go — installing go first..."
+    pkg_install go || return 1
+  fi
+  warn "Building osv-scanner with go install (this can take a minute)..."
+  GOBIN="${GOBIN:-$HOME/.local/bin}" \
+    go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest \
+    || { err "go install osv-scanner failed."; return 1; }
+  ok "osv-scanner installed to ${GOBIN:-$HOME/.local/bin}/osv-scanner"
+}
+
 # Ensure the omarchy-plugin-vet script exists in ~/.local/bin (downloaded from
 # the author's dotfiles repo; not packaged in any distro).
 install_vet() {
@@ -89,10 +140,15 @@ ensure_gh_auth() {
 }
 
 # Check all required tools; offer to install the missing ones.
+# Tools: git/gh/jq are direct dependencies of this script.
+# qmllint (qt6-qmllint on Arch) and go are optional-but-recommended
+# dependencies of omarchy-plugin-vet itself: it uses qmllint for the QML lint
+# check and go only to build the optional scorecard/osv-scanner CLIs. The vet
+# script degrades gracefully without them, but coverage is fuller with them.
 ensure_tools() {
   hdr "Checking required tools"
   local missing=()
-  for tool in git gh jq omarchy-plugin-vet; do
+  for tool in git gh jq qmllint go osv-scanner omarchy-plugin-vet; do
     if have "$tool"; then
       ok "$tool found"
     else
@@ -113,9 +169,12 @@ ensure_tools() {
   local tool
   for tool in "${missing[@]}"; do
     case "$tool" in
-      git)  pkg_install git ;;
-      jq)   pkg_install jq ;;
-      gh)   pkg_install github-cli ;;
+      git)      pkg_install git ;;
+      jq)       pkg_install jq ;;
+      gh)       pkg_install github-cli ;;
+      go)       pkg_install go ;;
+      qmllint)  install_qmllint ;;
+      osv-scanner) install_osv_scanner ;;
       omarchy-plugin-vet) install_vet ;;
     esac || { err "Installation of $tool failed."; return 2; }
   done

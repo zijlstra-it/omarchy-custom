@@ -2,15 +2,14 @@
 
 set -euo pipefail
 
-echo "===================================================="
-echo "       Omarchy: Installing Firefox Browser          "
-echo "===================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/../lib/output.sh"
 
+step "Installing Firefox..."
 omarchy install browser firefox
 
-echo "Making Firefox as a Default Browser"
+step "Making Firefox the default browser..."
 omarchy default browser firefox
 
-echo "===================================================="
-echo "        ✅ Firefox installed successfully!         "
-echo "===================================================="
+ok "Firefox installed successfully!"

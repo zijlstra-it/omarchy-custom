@@ -1,0 +1,4 @@
+# Never commit Pi credentials or local state — only tracked config is stowed.
+agent/auth.json
+agent/models-store.json
+agent/sessions/

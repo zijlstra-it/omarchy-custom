@@ -6,12 +6,16 @@ This document defines the coding standards and conventions for the omarchy-custo
 
 This repository automates the setup of a fresh Omarchy installation through modular Bash scripts:
 
-- **`setup.sh`**: Main entry point, orchestrates repository cloning and execution order
+- **`setup.sh`**: Main entry point, requests sudo once (`sudo -v`), orchestrates repository cloning and execution order
 - **`install-apps.sh`**: Manages ordered execution of individual app installers
 - **`install-tweaks.sh`**: Manages ordered execution of system tweak scripts
 - **`remove-apps.sh`**: Handles removal of unwanted web apps and packages
+- **`install-dotfiles.sh`**: Backs up conflicting files and stows dotfiles into the target directory
 - **`apps/install-<app>.sh`**: Individual installer scripts for each application
-- **`tweaks/<tweak>.sh`**: System tweak scripts (keybindings, plymouth theme, etc.)
+- **`tweaks/<tweak>.sh`**: System tweak scripts (plugins, themes, plymouth, etc.)
+- **`lib/output.sh`**: Shared output helpers (`banner`, `section`, `step`, `ok`, `warn`, `err`, `info`) sourced by every script
+- **`dotfiles/config/`**: Stowed to `~/.config/` (e.g. `dotfiles/config/hypr` → `~/.config/hypr`)
+- **`dotfiles/home/`**: Stowed to `$HOME/` (e.g. `dotfiles/home/.pi` → `~/.pi`); `auth.json` and other secrets are git-ignored here
 
 ## Script Conventions
 
@@ -37,29 +41,44 @@ set -euo pipefail
 
 ### 3. Script Structure
 
-All scripts follow a consistent three-part structure:
+All scripts follow a consistent structure and use the shared output helpers
+from `lib/output.sh`:
 
 ```bash
 #!/usr/bin/env bash
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/lib/output.sh"      # root scripts
+# source "$SCRIPT_DIR/../lib/output.sh" # for apps/ and tweaks/ scripts
+
 # Optional: Configuration variables (UPPER_CASE)
 
-# Optional: Helper functions (lowercase_with_underscores)
+# Opening banner (printed once per script)
+banner "Omarchy: Doing Something"
 
-# Header banner (71 characters wide)
-echo "===================================================="
-echo "           Script Purpose Description               "
-echo "===================================================="
+# Main execution logic using the helpers below
 
-# Main execution logic
-
-# Completion banner
-echo "===================================================="
-echo "           ✅ Success message                        "
-echo "===================================================="
+# Single success line (no closing banner)
+ok "Something done successfully!"
 ```
+
+Output helpers (icons are part of the convention):
+
+- `banner "Title"` — opening banner: 51 `=` chars, title centered, 51 `=` chars
+- `section "Header"` — bold section header on its own line
+- `step "▶ text"` — step in progress (use an icon, e.g. `step "🛠️ ..."`)
+- `ok "✅ ..."` — success (green ✅)
+- `warn "⚠️ ..."` — warning (yellow ⚠️)
+- `err "❌ ..."` — error (red ❌, always to stderr)
+- `info "ℹ️ ..."` — informational note
+
+Parent scripts (`setup.sh`, `install-apps.sh`, `install-tweaks.sh`) print one
+`step "Executing: <script>"` line per child instead of extra banners or dashed
+separators. Child scripts print one opening `banner` and finish with a single
+`ok` line — never a closing banner.
 
 ### 4. Naming Conventions
 
@@ -75,10 +94,10 @@ Use **2 spaces** for indentation. No tabs.
 ```bash
 for script in "${installers[@]}"; do
   if [[ ! -f "$script" ]]; then
-    echo "Error: $script not found" >&2
+    err "Error: $script not found"
     exit 1
   fi
- done
+done
 ```
 
 ### 6. String Quoting
@@ -86,8 +105,8 @@ for script in "${installers[@]}"; do
 Always quote variables and strings that may contain spaces or special characters:
 
 ```bash
-echo "Removing web app: $app"  # Good
-omarchy webapp remove "$app"  # Good
+step "Removing web app: $app"
+omarchy webapp remove "$app" || true  # idempotent: already-removed apps must not abort
 ```
 
 ### 7. Arrays
@@ -96,14 +115,10 @@ Define arrays with one element per line for readability. **Sort entries alphabet
 
 ```bash
 installers=(
-  "./apps/install-bitwarden.sh"
+  "./apps/install-apps.sh"
   "./apps/install-firefox.sh"
-  "./apps/install-ghostty.sh"
   "./apps/install-mistral-cli.sh"
-  "./apps/install-nvim.sh"
-  "./apps/install-proton-authenticator.sh"
-  "./apps/install-stow.sh"
-  "./apps/install-wezterm.sh"
+  "./apps/install-zsh.sh"
 )
 ```
 
@@ -111,9 +126,8 @@ For tweaks, use a separate `install-tweaks.sh` script:
 
 ```bash
 tweaks=(
-  "./tweaks/boot-lock.sh"
-  "./tweaks/lock-restyled.sh"
-  "./tweaks/omarchy-keybindings.sh"
+  "./tweaks/00_plugins.sh"
+  "./tweaks/01_themes.sh"
   "./tweaks/plymouth-bgrt.sh"
 )
 ```
@@ -154,7 +168,7 @@ Use `#` for comments with a single space after the hash:
 # --------------------------------------------------
 ```
 
-Section headers use hyphens and are centered within the 71-character width.
+Section headers use hyphens and are centered within the 51-character width.
 
 ### 10. Omarchy Commands
 
@@ -165,10 +179,11 @@ Use the `omarchy` CLI with appropriate categories:
 - **Browser installation**: `omarchy install browser <name>`
 - **Terminal installation**: `omarchy install terminal <name>`
 - **Editor installation**: `omarchy install editor <name>`
-- **AI tools**: `omarchy install ai <name>`
 - **Gaming**: `omarchy install gaming <name>`
 - **Docker databases**: `omarchy install docker dbs <name>`
-- **Set defaults**: `omarchy default <type> <name>`
+- **Set defaults**: `omarchy default <type> <name>` — note: `omarchy default agent <name>` also *launches* the agent; to only set the default (e.g. Pi) during installs, write `~/.config/omarchy/defaults/agent` directly
+- **Plugins**: `omarchy plugin add <git-url> --yes`, `omarchy plugin enable <id>`, `omarchy plugin list --json`
+- **Themes**: `omarchy theme install <git-url>`, `omarchy theme set <name>`, `omarchy theme list`
 - **Webapp removal**: `omarchy webapp remove <name>`
 - **Package removal**: `omarchy pkg drop <package>`
 - **System removal**: `omarchy remove <category> <name>`
@@ -202,12 +217,18 @@ Use these commands to configure Plymouth boot splash (requires sudo/root):
 To prevent Omarchy from overriding your Plymouth theme, disable and mask the refresh service:
 
 ```bash
-# Try both system and user level
-systemctl disable omarchy-refresh-plymouth.service 2>/dev/null || true
-systemctl mask omarchy-refresh-plymouth.service 2>/dev/null || true
-systemctl --user disable omarchy-refresh-plymouth.service 2>/dev/null || true
-systemctl --user mask omarchy-refresh-plymouth.service 2>/dev/null || true
+# Try both system and user level (with sudo, as in tweaks/plymouth-bgrt.sh)
+sudo systemctl disable omarchy-refresh-plymouth.service 2>/dev/null || true
+sudo systemctl mask omarchy-refresh-plymouth.service 2>/dev/null || true
+sudo systemctl --user disable omarchy-refresh-plymouth.service 2>/dev/null || true
+sudo systemctl --user mask omarchy-refresh-plymouth.service 2>/dev/null || true
 ```
+
+Note: the `omarchy-settings` package also destructively restores its own
+`/etc/plymouth/plymouthd.conf` (`Theme=omarchy`) on every upgrade, so
+`tweaks/plymouth-bgrt.sh` additionally installs a post-update hook at
+`~/.config/omarchy/hooks/post-update.d/plymouth-bgrt.hook` that re-applies the
+theme and rebuilds the initramfs after each `omarchy update`.
 
 Popular Plymouth themes:
 
@@ -247,10 +268,11 @@ Example keybinding actions:
 
 The main `setup.sh` orchestrates execution in this order:
 
-1. **Phase 1**: Repository checks and cloning
-2. **Phase 2**: App installation via `install-apps.sh`
-3. **Phase 3**: App removal via `remove-apps.sh`
-4. **Phase 4**: Dotfiles backup and stow via `dotSync.sh`
+1. **Phase 1**: `sudo -v` (ask for sudo credentials once), repository checks and cloning
+2. **Step 1**: App installation via `install-apps.sh`
+3. **Step 2**: System tweaks via `install-tweaks.sh`
+4. **Step 3**: App removal via `remove-apps.sh`
+5. **Step 4**: Dotfiles backup and stow via `install-dotfiles.sh` — twice: `dotfiles/config` → `~/.config` and `dotfiles/home` → `$HOME`
 
 Each phase must validate preconditions before execution.
 
@@ -262,7 +284,7 @@ Validate all prerequisites before making changes:
 # Validate every module before making changes
 for script in "${installers[@]}"; do
   if [[ ! -f "$script" ]]; then
-    echo "Error: Required installer not found: $script" >&2
+    err "Error: Required installer not found: $script"
     exit 1
   fi
 done
@@ -270,31 +292,26 @@ done
 
 ### 16. Error Messages
 
-Error messages must be written to stderr (`>&2`) and include clear descriptions:
+Error messages must be written to stderr with clear descriptions, using the `err` helper (which writes to stderr and prefixes ❌):
 
 ```bash
-echo "Error: <description>" >&2
+err "Error: <description>"
 exit 1
 ```
 
 ### 17. Success Messages
 
-Use consistent success indicators with checkmark emoji:
+Finish every script with a single `ok` line (see the helpers in section 3):
 
 ```bash
-echo "✅ <App/Task> installed/removed successfully!"
+ok "<App/Task> installed/removed successfully!"
 ```
 
 ### 18. Banner Formatting
 
-All banners use exactly 71 characters (including spaces):
-
-```bash
-echo "===================================================="
-# Exactly 71 '=' characters, followed by echo statements
-# Center text within 71-character width (including spaces)
-echo "===================================================="
-```
+Banners are printed via `banner "Title"` from `lib/output.sh`: exactly 51 `=`
+characters with the title centered between them. Do not print raw `echo "==="`
+banners or dashed `----` separators; use `banner`, `section`, and `step`.
 
 ### 19. File Permissions
 
@@ -305,7 +322,25 @@ chmod +x ./install-apps.sh
 ./install-apps.sh
 ```
 
-### 20. Temporaries
+### 20. Idempotency
+
+**All scripts MUST be idempotent: running `setup.sh` (or any sub-script) multiple times must be safe and produce the same end state.** Concretely:
+
+- Guard state-changing operations: skip when the desired state already exists (e.g. check a config file's content before writing it, check `command -v` before installing).
+- Never fail under `set -euo pipefail` because a target is already done — append `|| true` to removal/reset commands that error on missing items.
+- Prefer overwriting with identical content over appending; never create duplicate `.bak` files for symlinks that already point into the repo.
+
+Example:
+
+```bash
+if [ -f "$FILE" ] && [ "$(cat "$FILE")" = "desired" ]; then
+  info "Already configured."
+else
+  printf 'desired\n' > "$FILE"
+fi
+```
+
+### 21. Temporaries
 
 Use `mktemp` for temporary directories with descriptive prefixes:
 
@@ -326,9 +361,11 @@ rm -rf -- "$clone_tmp"
 
 set -euo pipefail
 
-echo "===================================================="
-echo "           Omarchy: Installing <App Name>            "
-echo "===================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/../lib/output.sh"
+
+banner "Omarchy: Installing <App Name>"
 
 # Installation commands here
 # Use appropriate omarchy command for the app category
@@ -336,9 +373,7 @@ echo "===================================================="
 # Optional: Set as default if applicable
 # omarchy default <type> <name>
 
-echo "===================================================="
-echo "           ✅ <App Name> installed successfully!     "
-echo "===================================================="
+ok "<App Name> installed successfully!"
 ```
 
 ## Adding New Apps
@@ -360,14 +395,10 @@ The `installers` array controls the installation order. Active installers are un
 
 ```bash
 installers=(
-  "./apps/install-bitwarden.sh"
+  "./apps/install-apps.sh"
   "./apps/install-firefox.sh"
-  "./apps/install-ghostty.sh"
   "./apps/install-mistral-cli.sh"
-  "./apps/install-nvim.sh"
-  "./apps/install-proton-authenticator.sh"
-  "./apps/install-stow.sh"
-  "./apps/install-wezterm.sh"
+  "./apps/install-zsh.sh"
 )
 ```
 
@@ -377,9 +408,8 @@ The `tweaks` array controls the tweak execution order. Maintain alphabetical ord
 
 ```bash
 tweaks=(
-  "./tweaks/boot-lock.sh"
-  "./tweaks/lock-restyled.sh"
-  "./tweaks/omarchy-keybindings.sh"
+  "./tweaks/00_plugins.sh"
+  "./tweaks/01_themes.sh"
   "./tweaks/plymouth-bgrt.sh"
 )
 ```
@@ -391,30 +421,50 @@ The `webapps` array lists web apps to remove. Maintain alphabetical order with n
 ```bash
 webapps=(
   "Basecamp"
+  "ChatGPT"
   "Discord"
   "Figma"
+  "Fizzy"
+  "GitHub"
+  "Google Contacts"
+  "Google Maps"
+  "Google Messages"
+  "Google Photos"
+  "HEY"
+  "MoonLight"
+  "X"
+  "Zoom"
 )
 ```
 
-Package removal uses inline lists with `omarchy pkg drop`. Sort packages alphabetically with numbered entries first:
+Package removal uses an inline list with `omarchy pkg drop ... || true` (idempotent). Sort packages alphabetically with numbered entries first:
 
 ```bash
 omarchy pkg drop \
   1password-beta \
   1password-cli \
-  foot \
-  spotify \
-  typora
+  aether \
+  chromium \
+  kdenlive \
+  obs-studio \
+  obsidian \
+  omawrite \
+  pinta \
+  signal-desktop \
+  tensaku \
+  typora \
+  xournalpp || true
 ```
 
 ## Tweaks Scripts
 
 The `tweaks/` directory contains system customization scripts that configure system-level settings. Tweak scripts use the naming convention `<tweak-name>.sh` (without the `install-` prefix).
 
-- **`boot-lock.sh`**: Creates Hyprland bootlock.lua that shows lock screen immediately at boot (works with SDDM autologin and Hyprland's pcall loader)
-- **`lock-restyled.sh`**: Creates custom.lock plugin for restyled lock screen (centered clock/date/battery, hidden password field, rounded design)
-- **`omarchy-keybindings.sh`**: Configures custom keybindings using `omarchy keybindings` commands
-- **`plymouth-bgrt.sh`**: Sets the Plymouth boot splash theme to `bgrt` and disables `omarchy-refresh-plymouth.service`
+- **`00_plugins.sh`**: Installs and enables Omarchy shell plugins (`omarchy plugin add` / `enable`), skipping plugins that are already installed
+- **`01_themes.sh`**: Installs the Nous theme if missing and sets it via `omarchy theme set`
+- **`plymouth-bgrt.sh`**: Sets the Plymouth boot splash theme to `bgrt`, rebuilds the initramfs, masks `omarchy-refresh-plymouth.service`, and installs a post-update hook that re-applies `bgrt` after every `omarchy update` (the `omarchy-settings` package resets the theme on upgrade)
+
+The Hyprland boot-lock config (`bootlock.lua`) is no longer a tweak script — it lives in `dotfiles/config/hypr/bootlock.lua` and is stowed to `~/.config/hypr/`.
 
 To add a new tweak script:
 
@@ -428,11 +478,11 @@ To add a new tweak script:
 Configuration variables in `setup.sh` use UPPER_CASE and are defined at the top:
 
 ```bash
-REPOS_DIR="$HOME/repos"
-OMARCHY_REPO_SSH="git@github.com:itsmzdev/omarchy-env-setup.git"
-OMARCHY_REPO_HTTPS="https://github.com/itsmzdev/omarchy-env-setup.git"
-DOTFILES_REPO_SSH="git@github.com:itsmzdev/dotfiles.git"
-DOTFILES_REPO_HTTPS="https://github.com/itsmzdev/dotfiles.git"
+REPOS_DIR="$HOME/git"
+OMARCHY_REPO_SSH="git@github.com:zijlstra-it/omarchy-custom.git"
+OMARCHY_REPO_HTTPS="https://github.com/zijlstra-it/omarchy-custom.git"
+DOTFILES_REPO_SSH="git@github.com:zijlstra-it/dotfiles.git"
+DOTFILES_REPO_HTTPS="https://github.com/zijlstra-it/dotfiles.git"
 ```
 
 ## Git Cloning Logic
@@ -449,7 +499,7 @@ clone_repo() {
 
   clone_tmp=$(mktemp -d "$REPOS_DIR/.${repo_name}.clone.XXXXXX")
 
-  echo "Trying to clone $repo_name over SSH..."
+  step "📥 Trying to clone $repo_name over SSH..."
   if GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' \
     git clone "$ssh_url" "$clone_tmp" 2>/dev/null; then
     mv "$clone_tmp" "$destination"
@@ -459,33 +509,24 @@ clone_repo() {
   rm -rf -- "$clone_tmp"
   clone_tmp=$(mktemp -d "$REPOS_DIR/.${repo_name}.clone.XXXXXX")
 
-  echo "SSH clone unavailable; trying HTTPS..."
+  info "SSH clone unavailable; trying HTTPS..."
   if git clone "$https_url" "$clone_tmp"; then
     mv "$clone_tmp" "$destination"
     return
   fi
 
   rm -rf -- "$clone_tmp"
-  echo "Could not clone $repo_name using SSH or HTTPS." >&2
+  err "Could not clone $repo_name using SSH or HTTPS."
   return 1
 }
 ```
-
-## Known Issues to Fix
-
-When modifying existing scripts, be aware of these inconsistencies:
-
-1. **Shebang inconsistency**: Some scripts use `#!/bin/bash`, others use `#!/usr/bin/env bash`
-2. **install-ghostty.sh**: Header says "Browser" instead of "Terminal"
-3. **install-ghostty.sh**: Success message says "Browser" instead of "Terminal"
-4. **install-ghostty.sh**: Title says "Brave Origin Browser" instead of "Ghostty"
 
 ## Testing
 
 Before committing changes:
 
 1. Test each installer script independently
-2. Test the full execution flow with `bash ./setup.sh`
+2. Test the full execution flow with `bash ./setup.sh` — **run it twice** to verify idempotency (see section 20)
 3. Verify error handling by testing with missing dependencies
 4. Ensure all scripts have execute permissions
 

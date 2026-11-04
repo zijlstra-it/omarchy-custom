@@ -2,8 +2,18 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/lib/output.sh"
+
+# Ask for sudo credentials once; sudo caches them for the rest of this run
+# (default timestamp_timeout, usually 15 minutes), so sub-scripts that call
+# sudo (e.g. tweaks/plymouth-bgrt.sh, apps/install-zsh.sh) don't re-prompt.
+step "🔑 Requesting sudo credentials once for this run..."
+sudo -v
+
 # Configuration
-REPOS_DIR="$HOME/git/github"
+REPOS_DIR="$HOME/git"
 OMARCHY_REPO_SSH="git@github.com:zijlstra-it/omarchy-custom.git"
 OMARCHY_REPO_HTTPS="https://github.com/zijlstra-it/omarchy-custom.git"
 DOTFILES_REPO_SSH="git@github.com:zijlstra-it/dotfiles.git"
@@ -18,7 +28,7 @@ clone_repo() {
 
   clone_tmp=$(mktemp -d "$REPOS_DIR/.${repo_name}.clone.XXXXXX")
 
-  echo "📥 Trying to clone $repo_name over SSH..."
+  step "📥 Trying to clone $repo_name over SSH..."
   if GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' \
     git clone "$ssh_url" "$clone_tmp" 2>/dev/null; then
     mv "$clone_tmp" "$destination"
@@ -28,25 +38,23 @@ clone_repo() {
   rm -rf -- "$clone_tmp"
   clone_tmp=$(mktemp -d "$REPOS_DIR/.${repo_name}.clone.XXXXXX")
 
-  echo "ℹ️ SSH clone unavailable; trying HTTPS..."
+  info "SSH clone unavailable; trying HTTPS..."
   if git clone "$https_url" "$clone_tmp"; then
     mv "$clone_tmp" "$destination"
     return
   fi
 
   rm -rf -- "$clone_tmp"
-  echo "❌ Could not clone $repo_name using SSH or HTTPS." >&2
+  err "Could not clone $repo_name using SSH or HTTPS."
   return 1
 }
 
-echo "===================================================="
-echo "       Omarchy: Setting Up Environments...          "
-echo "===================================================="
+banner "Omarchy: Setting Up Environments..."
 
 # --------------------------------------------------
 # Phase 1: Repository Checks
 # --------------------------------------------------
-echo -e "\n📦 Checking structural environment..."
+section "📦 Checking structural environment..."
 mkdir -p "$REPOS_DIR"
 
 # Check & Clone omarchy-custom
@@ -54,15 +62,7 @@ if [ ! -d "$REPOS_DIR/omarchy-custom" ]; then
   clone_repo "omarchy-custom" "$OMARCHY_REPO_SSH" "$OMARCHY_REPO_HTTPS" \
     "$REPOS_DIR/omarchy-custom"
 else
-  echo "✅ omarchy-custom directory detected."
-fi
-
-# Check & Clone dotfiles
-if [ ! -d "$REPOS_DIR/dotfiles" ]; then
-  clone_repo "dotfiles" "$DOTFILES_REPO_SSH" "$DOTFILES_REPO_HTTPS" \
-    "$REPOS_DIR/dotfiles"
-else
-  echo "✅ dotfiles directory detected."
+  ok "omarchy-custom directory detected."
 fi
 
 # Move into the omarchy-custom folder where the sub-scripts live
@@ -71,40 +71,37 @@ cd "$REPOS_DIR/omarchy-custom"
 # --------------------------------------------------
 # Phase 2: Sequential Execution
 # --------------------------------------------------
-echo -e "\n🚀 Starting execution pipeline..."
-echo "------------------------------------------------"
+section "🚀 Starting execution pipeline..."
 
 # 1. Install preferred system applications
 if [ -f "./install-apps.sh" ]; then
-  echo "🛠️ Step 1: Running core installation suite..."
+  step "🛠️ Step 1: Installing applications..."
   chmod +x ./install-apps.sh
   ./install-apps.sh
 fi
 
 # 1.5. Install system tweaks
 if [ -f "./install-tweaks.sh" ]; then
-  echo "🔧 Step 1.5: Applying system tweaks..."
+  step "🔧 Step 2: Applying system tweaks..."
   chmod +x ./install-tweaks.sh
   ./install-tweaks.sh
 fi
 
 # 2. Remove unwanted apps/bloat
 if [ -f "./remove-apps.sh" ]; then
-  echo "🔥 Step 2: Removing unwanted packages..."
+  step "🔥 Step 3: Removing unwanted packages..."
   chmod +x ./remove-apps.sh
   ./remove-apps.sh
 fi
 
 # 3. Back up existing configs and stow every discovered dotfiles package
-DOTSYNC_SCRIPT="$REPOS_DIR/dotfiles/dotSync.sh"
-if [ -f "$DOTSYNC_SCRIPT" ]; then
-  echo "🔗 Step 3: Backing up and stowing user environment configurations..."
-  bash "$DOTSYNC_SCRIPT"
-else
-  echo "❌ Error: dotSync.sh not found at $DOTSYNC_SCRIPT" >&2
-  exit 1
+if [ -f "./install-dotfiles.sh" ]; then
+  step "🔗 Step 4: Backing up and stowing user environment configurations..."
+  chmod +x ./install-dotfiles.sh
+  # XDG config: dotfiles/config/<pkg> -> ~/.config/<pkg>
+  ./install-dotfiles.sh -s ./dotfiles/config
+  # Home dotfiles: dotfiles/home/<path> -> ~/<path> (e.g. pi/agent -> ~/.pi/agent)
+  ./install-dotfiles.sh -s ./dotfiles/home -t "$HOME"
 fi
 
-echo "===================================================="
-echo " 🎉 System environment Setup completed successfully!"
-echo "===================================================="
+ok "🎉 System environment Setup completed successfully!"

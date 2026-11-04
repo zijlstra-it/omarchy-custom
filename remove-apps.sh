@@ -2,14 +2,16 @@
 
 set -euo pipefail
 
-echo "===================================================="
-echo "       Omarchy: Removing Web Apps & Packages        "
-echo "===================================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/output.sh
+source "$SCRIPT_DIR/lib/output.sh"
+
+banner "Omarchy: Removing Web Apps & Packages"
 
 # --------------------------------------------------
 # 1. Removing Webapps
 # --------------------------------------------------
-echo -e "\nExecuting: Removing Webapps..."
+section "Executing: Removing Webapps..."
 
 webapps=(
   "Basecamp"
@@ -29,8 +31,8 @@ webapps=(
 )
 
 for app in "${webapps[@]}"; do
-  echo "Removing web app: $app"
-  omarchy webapp remove "$app"
+  step "Removing web app: $app"
+  omarchy webapp remove "$app" || true
 done
 
 # Skipped webapps: WhatsApp
@@ -38,7 +40,7 @@ done
 # --------------------------------------------------
 # 2. Removing Packages
 # --------------------------------------------------
-echo -e "\nExecuting: Removing Packages..."
+section "Executing: Removing Packages..."
 
 omarchy pkg drop \
   1password-beta \
@@ -53,16 +55,14 @@ omarchy pkg drop \
   signal-desktop \
   tensaku \
   typora \
-  xournalpp
+  xournalpp || true
 
 # Skipped packages: lazydocker, opencode, claude-code
 
-omarchy remove security fido2
-omarchy remove security fingerprint
+omarchy remove security fido2 || true
+omarchy remove security fingerprint || true
 
 # --------------------------------------------------
 # Completion
 # --------------------------------------------------
-echo "===================================================="
-echo "         🎉 All apps removed successfully           "
-echo "===================================================="
+ok "🎉 All apps removed successfully"
