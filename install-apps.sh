@@ -10,7 +10,7 @@ source "$SCRIPT_DIR/lib/output.sh"
 installers=(
   "./apps/install-apps.sh"
   "./apps/install-firefox.sh"
-  "./apps/install-mistral-cli.sh"
+  "./apps/install-ai-agent.sh"
   "./apps/install-zsh.sh"
 )
 
