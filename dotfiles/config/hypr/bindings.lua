@@ -10,7 +10,7 @@
 --   omarchy_default_bindings = false
 
 -- To disable all preinstalled app/webapp bindings, set:
---   omarchy_preinstalled_bindings = false
+omarchy_preinstalled_bindings = false
 
 -- Add a new binding.
 -- o.bind("SUPER + SHIFT + R", "SSH", "alacritty -e ssh your-server")
@@ -36,11 +36,39 @@
 hl.unbind("SUPER + TAB")
 o.bind("SUPER + TAB", "Focus next window (Cmd+Tab)", hl.dsp.window.cycle_next())
 
--- SUPER+Ctrl+Left/Right moves between Spaces, exactly as on macOS.
-o.bind("SUPER + CTRL + LEFT", "Previous workspace (Spaces)", hl.dsp.focus({ workspace = "e-1" }))
-o.bind("SUPER + CTRL + RIGHT", "Next workspace (Spaces)", hl.dsp.focus({ workspace = "e+1" }))
+-- SUPER+Ctrl+Left/Right: cycle slots 1-5 of the CURRENT monitor, wrapping,
+-- creating empty workspaces as needed. Uses Omarchy's own o.workspaces.focus,
+-- which resolves the monitor's block correctly with laptop + external screen.
+local WORKSPACE_SLOTS = 5
+local function cycle_workspace(step)
+  return function()
+    local ws = hl.get_active_workspace()
+    if not ws then return end
+    local slot = (ws.id - 1) % WORKSPACE_SLOTS + 1
+    o.workspaces.focus((slot - 1 + step + WORKSPACE_SLOTS) % WORKSPACE_SLOTS + 1)()
+  end
+end
+hl.unbind("SUPER + CTRL + LEFT")
+hl.unbind("SUPER + CTRL + RIGHT")
+o.bind("SUPER + CTRL + LEFT", "Previous workspace (wraps 1-5, same monitor)", cycle_workspace(-1))
+o.bind("SUPER + CTRL + RIGHT", "Next workspace (wraps 1-5, same monitor)", cycle_workspace(1))
 
 -- Rebind Agent from SUPER+SHIFT+CTRL+A to SUPER+A
 hl.unbind("SUPER + SHIFT + CTRL + A")
+hl.unbind("SUPER + A")
 o.bind("SUPER + A", "Agent", "omarchy-agent --pick")
+
+-- Unbind SUPER+W as I'm so used to use it to close tabs but now it closes my window :(
+hl.unbind("SUPER+W")
+
+-- Unbind SUPER+L as I'm so used to using it but it adjust the layout which I don't need
+hl.unbind("SUPER+L")
+
+-- Extra mouse buttons -> browser back/forward via XF86Back/XF86Forward.
+-- The Logitech M650 sends BTN_FORWARD/BTN_BACK (= mouse:277/278):
+o.bind("mouse:278", "Browser back", "wtype -k XF86Back")
+o.bind("mouse:277", "Browser forward", "wtype -k XF86Forward")
+-- Also cover mice that send BTN_SIDE/BTN_EXTRA (= mouse:275/276):
+o.bind("mouse:275", "Browser back", "wtype -k XF86Back")
+o.bind("mouse:276", "Browser forward", "wtype -k XF86Forward")
 

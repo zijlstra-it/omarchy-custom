@@ -46,7 +46,6 @@ omarchy pkg drop \
   1password-beta \
   1password-cli \
   aether \
-  chromium \
   kdenlive \
   obs-studio \
   obsidian \

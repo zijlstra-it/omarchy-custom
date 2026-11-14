@@ -9,14 +9,14 @@ source "$SCRIPT_DIR/../lib/output.sh"
 banner "Omarchy: Installing Themes"
 
 # Install my preferred theme(s) — skip if already installed so re-runs are safe
-if omarchy theme list 2>/dev/null | grep -qx "Nous"; then
-  info "Theme 'Nous' already installed, skipping install."
+if omarchy theme list 2>/dev/null | grep -qx "Tokyo Daybreak"; then
+  info "Theme 'Tokyo Daybreak' already installed, skipping install."
 else
-  omarchy theme install https://github.com/notkisk/omarchy-nous-theme.git
+  omarchy theme install https://github.com/zijlstra-it/omarchy-tokyo-daybreak-theme.git
 fi
 
 # Set preferred Theme
-step "Setting theme to Nous..."
-omarchy theme set Nous
+step "Setting theme to Tokyo Daybreak..."
+omarchy theme set tokyo-daybreak
 
 ok "Themes installed successfully!"

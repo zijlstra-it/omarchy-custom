@@ -10,7 +10,7 @@ This repository incorporates configurations and modules from the following sourc
 - [itsmzdev/omarchy-env-setup](https://github.com/itsmzdev/omarchy-env-setup) - Base Omarchy environment setup
 
 ### Themes & Tweaks
-- [notkisk/omarchy-nous-theme](https://github.com/notkisk/omarchy-nous-theme) - Nous theme (`tweaks/01_themes.sh`)
+- [zijlstra-it/omarchy-tokyo-daybreak-theme](https://github.com/zijlstra-it/omarchy-tokyo-daybreak-theme) - Tokyo Daybreak theme, fork of Nous (`tweaks/01_themes.sh`)
 - [kris-1/omarchy-monitor-layout](https://github.com/kris-1/omarchy-monitor-layout) - Monitor layout plugin
 - [ParvvOK/equalizer](https://github.com/ParvvOK/equalizer) - Equalizer plugin
 - [BibekBhusal0/omarchy-better-lock](https://github.com/BibekBhusal0/omarchy-better-lock) - Better lock plugin

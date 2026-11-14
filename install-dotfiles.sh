@@ -43,7 +43,6 @@ IGNORE_PATTERNS=(
     '.gitignore'
     'install-dotfiles.sh'
     'README*'
-    '*.md'
     # Never stow Pi credentials, even if present in the dotfiles tree
     'auth.json'
     '*/auth.json'
