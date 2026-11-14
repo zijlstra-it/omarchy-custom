@@ -1,0 +1,15 @@
+# Never commit OMP credentials, sessions, or local state — only tracked config is stowed.
+agent/auth.json
+agent/models-store.json
+agent/sessions/
+agent/terminal-sessions/
+agent/*.db
+agent/*.db-shm
+agent/*.db-wal
+agent/cache/
+agent/predict/
+agent/last-changelog-version
+logs/
+run/
+natives/
+profiles/

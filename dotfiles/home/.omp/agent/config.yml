@@ -1,0 +1,12 @@
+modelRoles:
+  default: mistral/mistral-large-4
+symbolPreset: nerd
+composer:
+  shape: box
+theme:
+  dark: dark-tokyo-night
+update:
+  auto: false
+setupVersion: 3
+security:
+  enabled: true
